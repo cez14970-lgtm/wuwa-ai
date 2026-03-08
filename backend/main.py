@@ -1,12 +1,14 @@
 """
 WuwaAI 后端主入口
-鸣潮智能自动化助手 - AI增强版
+鸣潮智能自动化助手 - v2.0
 """
 import os
 import sys
 from pathlib import Path
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
+from pydantic import BaseModel
+import uvicorn
 
 # 添加项目根目录到路径
 project_root = Path(__file__).parent.parent
@@ -15,45 +17,34 @@ sys.path.insert(0, str(project_root))
 # 加载环境变量
 load_dotenv(project_root / "backend" / ".env")
 
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel
-import uvicorn
 
-from automation import WuwaAIAutomation, get_automation
-from utils.logger import get_logger
+from wuwa_ai import WuwaAI, Config
 
-logger = get_logger(__name__)
-
-# 全局自动化实例
-automation: WuwaAIAutomation = None
+# 全局AI实例
+ai: WuwaAI = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """应用生命周期管理"""
-    global automation
-    logger.info("🚀 初始化 WuwaAI...")
+    """应用生命周期"""
+    global ai
+    print("🚀 初始化 WuwaAI v2.0...")
     
-    try:
-        automation = await get_automation()
-        logger.info("✅ WuwaAI 初始化完成")
-    except Exception as e:
-        logger.error(f"❌ 初始化失败: {e}")
+    # 创建AI实例
+    ai = WuwaAI(is_cloud=Config.IS_CLOUD_GAME)
     
     yield
     
-    logger.info("👋 关闭 WuwaAI...")
-    if automation:
-        await automation.stop()
+    print("👋 关闭 WuwaAI...")
 
 
 # 创建FastAPI应用
 app = FastAPI(
-    title="WuwaAI API",
+    title="WuwaAI API v2.0",
     description="鸣潮智能自动化助手 API",
-    version="1.0.0",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -71,57 +62,53 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    return {
-        "message": "WuwaAI API Running", 
-        "version": "1.0.0",
-        "docs": "/docs"
-    }
+    return {"message": "WuwaAI API v2.0", "version": "2.0.0"}
 
 
 @app.get("/health")
 async def health():
-    return {
-        "status": "ok",
-        "automation": automation.get_status() if automation else None
-    }
+    if not ai:
+        return {"status": "error", "message": "AI未初始化"}
+    
+    status = ai.get_status()
+    return {"status": "ok", **status}
 
 
 # ==================== 游戏控制 ====================
 
 class ConnectRequest(BaseModel):
-    process_name: str = "WuWa.exe"
-    window_title: str = "鸣潮"
+    is_cloud: bool = True
 
 
 @app.post("/game/connect")
 async def connect_game(request: ConnectRequest = None):
-    """连接游戏窗口"""
+    """连接游戏"""
     try:
-        if not automation:
-            return {"success": False, "error": "自动化未初始化"}
+        if not ai:
+            return {"success": False, "error": "AI未初始化"}
         
-        if request:
-            os.environ["GAME_PROCESS_NAME"] = request.process_name
-            os.environ["GAME_WINDOW_TITLE"] = request.window_title
+        is_cloud = request.is_cloud if request else True
+        result = ai.connect()
         
-        result = await automation.connect_game()
-        return result
+        return {"success": "成功" in result, "message": result}
     except Exception as e:
-        logger.error(f"连接游戏失败: {e}")
         return {"success": False, "error": str(e)}
 
 
 @app.post("/game/screenshot")
 async def get_screenshot():
-    """截取游戏画面"""
+    """获取截图"""
     try:
-        if not automation or not automation.controller:
-            return {"success": False, "error": "未连接游戏"}
+        if not ai:
+            return {"success": False, "error": "AI未初始化"}
         
-        screenshot = await automation.controller.screenshot()
-        return {"success": True, "image": screenshot[:1000] + "..." if len(screenshot) > 1000 else screenshot}
+        img_base64 = ai.get_screenshot_base64()
+        
+        if not img_base64:
+            return {"success": False, "error": "截图失败"}
+        
+        return {"success": True, "image": img_base64}
     except Exception as e:
-        logger.error(f"截图失败: {e}")
         return {"success": False, "error": str(e)}
 
 
@@ -132,193 +119,151 @@ class ClickRequest(BaseModel):
 
 @app.post("/game/click")
 async def click_position(request: ClickRequest):
-    """点击指定位置"""
+    """点击"""
     try:
-        if not automation or not automation.controller:
-            return {"success": False, "error": "未连接游戏"}
+        if not ai:
+            return {"success": False, "error": "AI未初始化"}
         
-        await automation.controller.click(request.x, request.y)
+        ai.controller.click(request.x, request.y)
         return {"success": True}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
 
-class InputRequest(BaseModel):
-    text: str
+class KeyRequest(BaseModel):
+    key: str
 
 
-@app.post("/game/input")
-async def input_text(request: InputRequest):
-    """输入文本"""
+@app.post("/game/key")
+async def press_key(request: KeyRequest):
+    """按键"""
     try:
-        if not automation or not automation.controller:
-            return {"success": False, "error": "未连接游戏"}
+        if not ai:
+            return {"success": False, "error": "AI未初始化"}
         
-        await automation.controller.input_text(request.text)
+        ai.controller.press_key(request.key)
         return {"success": True}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
 
-# ==================== AI 分析 ====================
-
-@app.post("/ai/analyze")
-async def analyze_scene():
-    """AI分析当前场景"""
-    try:
-        if not automation:
-            return {"success": False, "error": "自动化未初始化"}
-        
-        screenshot = await automation.controller.screenshot()
-        if not screenshot:
-            return {"success": False, "error": "截图失败"}
-        
-        scene_info = await automation.recognizer.analyze(screenshot)
-        solution = await automation.analyzer.analyze(scene_info, automation.memory)
-        
-        return {
-            "success": True,
-            "scene": scene_info.to_dict() if hasattr(scene_info, 'to_dict') else scene_info,
-            "solution": solution
-        }
-    except Exception as e:
-        logger.error(f"分析失败: {e}")
-        return {"success": False, "error": str(e)}
-
-
-@app.post("/ai/execute")
-async def execute_solution():
-    """执行AI生成的解决方案"""
-    try:
-        if not automation:
-            return {"success": False, "error": "自动化未初始化"}
-        
-        screenshot = await automation.controller.screenshot()
-        scene_info = await automation.recognizer.analyze(screenshot)
-        solution = await automation.analyzer.analyze(scene_info, automation.memory)
-        
-        if not solution.get("need_help"):
-            return {"success": True, "message": "无需帮助，按原有流程执行"}
-        
-        # 搜索解决方案
-        if solution.get("need_search"):
-            strategies = await automation.searcher.search(solution["problem_description"])
-            solution["strategies"] = strategies
-        
-        # 执行
-        result = await automation.executor.execute(solution)
-        
-        # 记录到记忆
-        automation.memory.record(solution, result)
-        
-        return {"success": True, "result": result}
-    except Exception as e:
-        logger.error(f"执行失败: {e}")
-        return {"success": False, "error": str(e)}
-
-
-# ==================== 自动化控制 ====================
+# ==================== 任务控制 ====================
 
 class StartRequest(BaseModel):
-    mode: str = "story"
+    task: str = "explore"
+
+
+@app.post("/task/start")
+async def start_task(request: StartRequest):
+    """开始任务"""
+    try:
+        if not ai:
+            return {"success": False, "error": "AI未初始化"}
+        
+        ai.start_task(request.task)
+        
+        return {"success": True, "message": f"任务已开始: {request.task}"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/task/stop")
+async def stop_task():
+    """停止任务"""
+    try:
+        if not ai:
+            return {"success": False, "error": "AI未初始化"}
+        
+        ai.stop_task()
+        
+        return {"success": True, "message": "任务已停止"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/task/execute")
+async def execute_task():
+    """执行一次任务检测"""
+    try:
+        if not ai:
+            return {"success": False, "error": "AI未初始化"}
+        
+        ai.execute_once()
+        
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/task/status")
+async def get_status():
+    """获取任务状态"""
+    try:
+        if not ai:
+            return {"success": False, "error": "AI未初始化"}
+        
+        return {"success": True, "status": ai.get_status()}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# ==================== 自动化循环 ====================
+
+import asyncio
+
+automation_task = None
 
 
 @app.post("/automation/start")
-async def start_automation(request: StartRequest = None):
-    """开始自动化"""
-    try:
-        if not automation:
-            return {"success": False, "error": "自动化未初始化"}
-        
-        mode = request.mode if request else "story"
-        await automation.start(mode)
-        return {"success": True, "message": f"自动化已开始 (模式: {mode})"}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+async def start_automation():
+    """开始自动化循环"""
+    global automation_task
+    
+    if not ai:
+        return {"success": False, "error": "AI未初始化"}
+    
+    async def loop():
+        while True:
+            try:
+                ai.execute_once()
+                await asyncio.sleep(Config.TASK_INTERVAL)
+            except Exception as e:
+                print(f"自动化循环错误: {e}")
+                break
+    
+    automation_task = asyncio.create_task(loop())
+    
+    return {"success": True, "message": "自动化已开始"}
 
 
 @app.post("/automation/stop")
 async def stop_automation():
-    """停止自动化"""
-    try:
-        if not automation:
-            return {"success": False, "error": "自动化未初始化"}
-        
-        await automation.stop()
-        return {"success": True, "message": "自动化已停止"}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-
-@app.post("/automation/pause")
-async def pause_automation():
-    """暂停自动化"""
-    try:
-        if not automation:
-            return {"success": False, "error": "自动化未初始化"}
-        
-        await automation.pause()
-        return {"success": True, "message": "自动化已暂停"}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-
-@app.post("/automation/resume")
-async def resume_automation():
-    """恢复自动化"""
-    try:
-        if not automation:
-            return {"success": False, "error": "自动化未初始化"}
-        
-        await automation.resume()
-        return {"success": True, "message": "自动化已恢复"}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-
-@app.get("/automation/status")
-async def get_status():
-    """获取自动化状态"""
-    try:
-        if not automation:
-            return {"success": False, "error": "自动化未初始化"}
-        
-        return {"success": True, "status": automation.get_status()}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+    """停止自动化循环"""
+    global automation_task
+    
+    if automation_task:
+        automation_task.cancel()
+        automation_task = None
+    
+    if ai:
+        ai.stop_task()
+    
+    return {"success": True, "message": "自动化已停止"}
 
 
 # ==================== 设置 ====================
 
-class SettingsRequest(BaseModel):
-    screenshot_interval: int = 2
-    max_retries: int = 3
-    action_delay: int = 1
-
-
 @app.get("/settings")
 async def get_settings():
     """获取设置"""
-    if not automation:
-        return {"success": False, "error": "自动化未初始化"}
-    
-    return {"success": True, "settings": automation.config}
-
-
-@app.post("/settings")
-async def update_settings(request: SettingsRequest):
-    """更新设置"""
-    try:
-        if not automation:
-            return {"success": False, "error": "自动化未初始化"}
-        
-        automation.config["screenshot_interval"] = request.screenshot_interval
-        automation.config["max_retries"] = request.max_retries
-        automation.config["action_delay"] = request.action_delay
-        
-        return {"success": True, "message": "设置已更新", "settings": automation.config}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+    return {
+        "success": True,
+        "settings": {
+            "is_cloud_game": Config.IS_CLOUD_GAME,
+            "game_process": Config.GAME_PROCESS_NAME,
+            "task_interval": Config.TASK_INTERVAL
+        }
+    }
 
 
 if __name__ == "__main__":

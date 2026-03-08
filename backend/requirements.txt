@@ -7,35 +7,23 @@ uvicorn[standard]==0.27.0
 python-multipart==0.0.6
 pydantic==2.5.0
 
-# Windows 游戏控制 (必需)
+# Windows 游戏控制
 pywin32==306
 psutil==5.9.8
 pyautogui==0.9.54
+
+# 图像处理
 Pillow==10.2.0
+opencv-python==4.9.0.80
+numpy==1.26.4
 
-# 游戏自动化框架 (可选，用于高级功能)
-# ok-script @ git+https://github.com/ok-oldking/ok-script.git
+# OCR (可选，用于文字识别)
+easyocr==1.7.0
 
-# LLM & Vision
-transformers>=4.36.0
-torch>=2.0.0
-torchvision>=0.15.0
-pillow>=10.0.0
-accelerate>=0.25.0
+# LLM & Vision (可选，用于AI增强)
+# transformers>=4.36.0
+# torch>=2.0.0
 
-# OCR (可选)
-opencv-python>=4.8.0
-numpy>=1.24.0
-easyocr>=1.7.0
-
-# 网络 & 工具
+# 网络
 httpx>=0.26.0
-aiohttp>=3.9.0
 python-dotenv>=1.0.0
-python-dateutil>=2.8.0
-
-# 日志
-colorlog>=6.8.0
-
-# WebSocket
-websockets>=12.0
