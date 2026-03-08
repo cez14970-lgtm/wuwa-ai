@@ -58,11 +58,15 @@ class GameController:
                     logger.info(f"✅ 已连接到游戏窗口: {self.window_handle}")
                     return f"已连接: {self.window_handle}"
                 else:
-                    logger.warning("⚠️ 未找到游戏窗口")
-                    return "未找到游戏窗口"
+                    # 没找到窗口，使用模拟模式
+                    logger.warning("⚠️ 未找到游戏窗口，启用模拟模式")
+                    self.window_handle = "mock"
+                    return "未找到游戏窗口，已启用模拟模式用于测试"
             else:
-                # 备用方案
-                return "ok-script未安装，请先安装: pip install ok-script"
+                # 没有ok-script，使用模拟模式
+                logger.warning("⚠️ ok-script未安装，启用模拟模式")
+                self.window_handle = "mock"
+                return "ok-script未安装，已启用模拟模式"
         except Exception as e:
             logger.error(f"❌ 连接失败: {e}")
             return f"连接失败: {str(e)}"
@@ -75,6 +79,22 @@ class GameController:
             base64编码的图像
         """
         try:
+            # 模拟模式 - 返回测试图片
+            if self.window_handle == "mock":
+                # 返回一个简单的测试图片（黑色背景+文字）
+                from PIL import Image, ImageDraw, ImageFont
+                import io
+                
+                img = Image.new('RGB', (1280, 720), color=(20, 20, 40))
+                d = ImageDraw.Draw(img)
+                d.text((500, 340), "WuwaAI 模拟模式", fill=(0, 217, 255))
+                d.text((450, 380), "游戏未连接 - 这是测试画面", fill=(150, 150, 150))
+                
+                buffer = io.BytesIO()
+                img.save(buffer, format="JPEG", quality=80)
+                img_bytes = buffer.getvalue()
+                return base64.b64encode(img_bytes).decode()
+            
             if self.ok and self.window_handle:
                 # 使用ok-script截图
                 img = self.ok.screenshot(self.window_handle)
@@ -89,7 +109,6 @@ class GameController:
                 
                 return img_base64
             else:
-                # 备用：返回空
                 logger.warning("⚠️ 无法截图: 未连接游戏")
                 return ""
                 
