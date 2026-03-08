@@ -7,6 +7,10 @@ import os
 import base64
 from typing import Optional, Tuple
 from pathlib import Path
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from utils.logger import get_logger
 
 logger = get_logger(__name__)

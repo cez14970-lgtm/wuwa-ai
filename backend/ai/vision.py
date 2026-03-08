@@ -5,6 +5,10 @@ AI 视觉理解模块
 import base64
 import json
 from typing import Optional, Dict, Any
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from utils.logger import get_logger
 from utils.llm import get_llm_client
 

@@ -4,6 +4,10 @@ AI 推理决策模块
 """
 import json
 from typing import Dict, Any, Optional
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from utils.logger import get_logger
 from utils.llm import get_llm_client
 

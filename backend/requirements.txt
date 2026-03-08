@@ -1,11 +1,13 @@
 # WuwaAI Backend Requirements
+# 鸣潮智能自动化助手后端依赖
 
-# FastAPI
+# FastAPI & Web
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
 python-multipart==0.0.6
+pydantic==2.5.0
 
-# 游戏自动化框架
+# 游戏自动化框架 (可选)
 # ok-script @ git+https://github.com/ok-oldking/ok-script.git
 
 # LLM & Vision
@@ -15,7 +17,7 @@ torchvision>=0.15.0
 pillow>=10.0.0
 accelerate>=0.25.0
 
-# OCR
+# OCR (可选)
 opencv-python>=4.8.0
 numpy>=1.24.0
 easyocr>=1.7.0
