@@ -169,26 +169,89 @@ class WuwaAIAutomation:
         scene_type = scene_info.scene_type
         
         if scene_type == "story":
-            # 剧情模式：自动点击对话
-            await self._auto_dialogue()
+            await self._auto_story()
         elif scene_type == "battle":
-            # 战斗模式：自动战斗
             await self._auto_battle()
+        elif scene_type == "explore":
+            await self._auto_explore()
         elif scene_type == "loading":
-            # 等待加载
             await asyncio.sleep(3)
-        # 其他场景暂时跳过
+        else:
+            # 未知场景，尝试自动操作
+            await self._auto_explore()
     
-    async def _auto_dialogue(self):
-        """自动剧情对话"""
-        # 这里可以调用ok-script自动点击"继续"按钮
-        # 简化版本：等待一段时间让对话自动播放
+    async def _auto_story(self):
+        """自动剧情模式"""
+        logger.info("📖 执行自动剧情...")
+        
+        # 1. 查找"继续"按钮并点击 (屏幕中间下方)
+        # 2. 等待对话播放
+        # 3. 重复
+        
+        # 模拟点击"继续"按钮位置 (1920x1080分辨率)
+        await self.controller.click(960, 900)  # 屏幕底部中央
+        await asyncio.sleep(1)
+        
+        # 模拟按空格跳过对话
+        await self.controller.press_key('space')
         await asyncio.sleep(2)
+        
+        logger.info("✅ 剧情操作完成")
     
     async def _auto_battle(self):
-        """自动战斗"""
-        # 这里可以添加自动战斗逻辑
+        """自动战斗模式"""
+        logger.info("⚔️ 执行自动战斗...")
+        
+        # 战斗基本操作循环
+        # 1. 普通攻击 (鼠标左键)
+        await self.controller.click(960, 540)  # 点击屏幕中间
+        await asyncio.sleep(0.3)
+        
+        # 2. 释放技能 (Q/E/R键)
+        await self.controller.press_key('q')  # 技能1
+        await asyncio.sleep(0.5)
+        
+        await self.controller.press_key('e')  # 技能2
+        await asyncio.sleep(0.5)
+        
+        await self.controller.press_key('r')  # 大招
+        await asyncio.sleep(0.5)
+        
+        # 3. 闪避 (Shift)
+        await self.controller.press_key('shift')
+        await asyncio.sleep(0.3)
+        
+        # 4. 跳跃 (Space) 躲避技能
+        await self.controller.press_key('space')
+        
         await asyncio.sleep(1)
+        logger.info("✅ 战斗操作完成")
+    
+    async def _auto_explore(self):
+        """自动探索模式"""
+        logger.info("🗺️ 执行自动探索...")
+        
+        # 1. 自动移动 (按住W)
+        # 2. 跳跃翻越障碍 (Space)
+        # 3. 互动 (E)
+        # 4. 收集物品
+        
+        # 模拟按下W键前进
+        import time
+        start = time.time()
+        while time.time() - start < 2:  # 前进2秒
+            await self.controller.press_key('w')
+            await asyncio.sleep(0.1)
+        
+        # 尝试互动
+        await self.controller.press_key('e')
+        await asyncio.sleep(0.5)
+        
+        # 跳跃
+        await self.controller.press_key('space')
+        await asyncio.sleep(0.5)
+        
+        logger.info("✅ 探索操作完成")
     
     def get_status(self) -> Dict[str, Any]:
         """获取状态"""
