@@ -7,7 +7,11 @@ uvicorn[standard]==0.27.0
 python-multipart==0.0.6
 pydantic==2.5.0
 
-# 游戏自动化框架 (可选)
+# Windows 游戏控制 (必需)
+pywin32==306
+psutil==5.9.8
+
+# 游戏自动化框架 (可选，用于高级功能)
 # ok-script @ git+https://github.com/ok-oldking/ok-script.git
 
 # LLM & Vision
