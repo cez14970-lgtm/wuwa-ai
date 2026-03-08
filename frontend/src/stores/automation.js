@@ -60,7 +60,8 @@ export const useAutomationStore = defineStore('automation', {
         const res = await api.getAutomationStatus()
         if (res.data.success) {
           const status = res.data.status
-          this.connectionStatus = status.running ? 'connected' : 'disconnected'
+          // 先检查连接状态，再检查运行状态
+          this.connectionStatus = status.connected ? 'connected' : 'disconnected'
           this.automationState = status.running ? 'running' : 'idle'
         }
       } catch (error) {

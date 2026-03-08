@@ -31,6 +31,7 @@ class WuwaAIAutomation:
         
         self.running = False
         self.paused = False
+        self.connected = False  # 游戏是否已连接
         self.current_mode = "story"  # story/battle/explore
         
         # 配置
@@ -60,7 +61,10 @@ class WuwaAIAutomation:
             return {"success": False, "error": "未初始化"}
         
         result = await self.controller.connect()
-        return {"success": "未找到游戏窗口" not in result, "message": result}
+        connected = "未找到" not in result and "失败" not in result
+        self.connected = connected
+        
+        return {"success": connected, "message": result}
     
     async def start(self, mode: str = "story"):
         """开始自动化"""
@@ -191,6 +195,7 @@ class WuwaAIAutomation:
         return {
             "running": self.running,
             "paused": self.paused,
+            "connected": self.connected,
             "mode": self.current_mode,
             "memory": self.memory.get_summary() if self.memory else None
         }
