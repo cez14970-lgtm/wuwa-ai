@@ -1,0 +1,51 @@
+{
+    "game": {
+        "process_name": "WuWa.exe",
+        "window_title": "鸣潮",
+        "default_resolution": {
+            "width": 1920,
+            "height": 1080
+        }
+    },
+    "automation": {
+        "modes": {
+            "story": {
+                "name": "剧情模式",
+                "auto_dialogue": true,
+                "auto_select": true,
+                "skip_cutscene": false
+            },
+            "battle": {
+                "name": "战斗模式",
+                "auto_battle": true,
+                "auto_dodge": true,
+                "skill_rotation": "default"
+            },
+            "explore": {
+                "name": "探索模式",
+                "auto_collect": true,
+                "auto_interact": true,
+                "map_awareness": true
+            }
+        },
+        "retry": {
+            "max_attempts": 3,
+            "wait_between": 5
+        }
+    },
+    "ai": {
+        "vision_model": "qwen-vl-max",
+        "reasoning_model": "qwen-plus",
+        "auto_search": true,
+        "search_timeout": 30
+    },
+    "screenshot": {
+        "refresh_interval": 2,
+        "quality": 85,
+        "format": "jpeg"
+    },
+    "ui": {
+        "theme": "dark",
+        "language": "zh-CN"
+    }
+}
